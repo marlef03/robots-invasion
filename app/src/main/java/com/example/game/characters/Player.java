@@ -1,67 +1,119 @@
 package com.example.game.characters;
 
-import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 
-import com.example.game.R;
-import com.example.game.buildlogic.Parallelepiped;
-import com.example.game.buildlogic.Primitive;
+import com.example.game.MainActivity;
+import com.example.game.characters.pickups.Item;
+import com.example.game.characters.pickups.ItemHolder;
+import com.example.game.characters.pickups.MachineGun;
+import com.example.game.characters.pickups.Melee;
+import com.example.game.characters.pickups.Pistol;
+import com.example.game.characters.pickups.ShotGun;
+import com.example.game.characters.pickups.ThrowableWeapon;
 import com.example.game.core.GameView;
-import com.example.game.ui.JoyStick;
+import com.example.game.species.Body;
+import com.example.game.util.ImageManager;
+import com.example.game.util.Vec;
 
-public class Player extends Parallelepiped {
-    private Bitmap image;
+public class Player extends Body {
+    private Vec lastDir;
+    private int stepsStream = -1;
+    private int money;
 
-    private float plJumpForce, speedMode;
+    private ImageManager imageManager;
 
-    public void setImageBitmap(Context context) {
-        image = BitmapFactory.decodeResource(context.getResources(), R.drawable.character);
-        image = Bitmap.createScaledBitmap(image, (int)(170 * GameView.HEIGHT_MULTIP), (int)(260 * GameView.HEIGHT_MULTIP), false);
+    private float jumpForce;
+
+    private ItemHolder itemHolder;
+
+    public Player(float x, float y, float z) {
+        super(x, y, z, 100, 50, 15, 0.4f, 100);
+
+        bounceCoeff = 10;
+        friction = 0.002f;
+        velForce = 0.6f;
+        jumpForce = 2f;
+
+        lastDir = new Vec(1, 0);
+
+        itemHolder = new ItemHolder((float)GameView.WIDTH / 2 - 430 * GameView.HEIGHT_MULTIP, GameView.HEIGHT - 200 * GameView.HEIGHT_MULTIP,
+                (float)GameView.WIDTH / 2 + 430 * GameView.HEIGHT_MULTIP, GameView.HEIGHT - 30 * GameView.HEIGHT_MULTIP, 5);
+
+        imageManager = new ImageManager();
+        imageManager.setWalkFrames(MainActivity.characterWalkFrames);
+        imageManager.setPistolWalkFrames(MainActivity.characterPistolWalkFrames);
+        imageManager.setMachineGunWalkFrames(MainActivity.characterMachineGunWalkFrames);
+        imageManager.setShotGunWalkFrames(MainActivity.characterShotGunWalkFrames);
+        imageManager.setMeleeWalkFrames(MainActivity.characterMeleeWalkFrames);
+        imageManager.setBombWalkFrames(MainActivity.characterBombWalkFrames);
+        imageManager.setContactBombWalkFrames(MainActivity.characterContactBombWalkFrames);
+        imageManager.setStickyBombWalkFrames(MainActivity.characterStickyBombWalkFrames);
+        imageManager.setMedKitWalkFrames(MainActivity.characterMedKitWalkFrames);
     }
 
-    public Player(float x, float y, float z, float side, int l) {
-        super(x, y, z, side, side, l, false, false, true, false);
-
-        viewX = (float)GameView.ORIG_WIDTH / 2 - side / 2;
-        viewY = (float)GameView.ORIG_HEIGHT / 2 - side / 2;
-
-        //SPEED MODES 4 - LOW, 8 - MIDDLE, 15 - HIGH
-        speedMode = 8;
-
-        plJumpForce = 30;
+    public void setMoney(int money) {
+        this.money = money;
     }
 
-    public void changeSpeed(JoyStick js) {
-        selfSpeedX = js.getXDir() * speedMode;
-
-        selfSpeedY = js.getYDir() * speedMode;
+    public int getMoney() {
+        return money;
     }
 
-    public void setJumpSpeed() {
-        jumpSpeed = plJumpForce;
-    }
-    public float getSpeedMode() {
-        return speedMode;
+    public void changeMoney(int amount) {
+        money += amount;
     }
 
-    public void draw(Canvas c, Paint p, boolean freeCam, float[] point) {
-        p.setColor(Color.GREEN);
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(5);
+    public float getJumpForce() {
+        return jumpForce;
+    }
 
-        if (!freeCam) {
-            c.drawRect(viewX * GameView.HEIGHT_MULTIP, viewY * GameView.HEIGHT_MULTIP, (viewX + w) * GameView.HEIGHT_MULTIP,
-                    (viewY + h) * GameView.HEIGHT_MULTIP, p);
-            c.drawBitmap(image, (getViewX() - 35) * GameView.HEIGHT_MULTIP, (getViewY() - 150) * GameView.HEIGHT_MULTIP, p);
+    public ItemHolder getItemHolder() {
+        return itemHolder;
+    }
 
-        } else if (freeCam) {
-            c.drawRect((x - point[0]) * GameView.HEIGHT_MULTIP, (y - point[1] - z) * GameView.HEIGHT_MULTIP,
-                    (x - point[0] + w) * GameView.HEIGHT_MULTIP, (y - point[1] + h - z) * GameView.HEIGHT_MULTIP, p);
-            c.drawBitmap(image, (getX() - point[0] - 35) * GameView.HEIGHT_MULTIP, (getY() - getZ() - point[1] - 150) * GameView.HEIGHT_MULTIP, p);
+    public void setLastDir(Vec dir) {
+        lastDir = dir;
+    }
+
+    @Override
+    public void move() {
+        super.move();
+
+        if (accV.x != 0 && accV.y != 0) {
+            lastDir = accV.unit();
+            if (!jumped && stepsStream == -1) stepsStream = MainActivity.playSteps();
         }
+        else if (stepsStream != -1) {
+            MainActivity.stopSteps(stepsStream);
+            stepsStream = -1;
+        }
+
+        shape.setDirV(lastDir);
+    }
+
+    @Override
+    public void changeSpeed(float xDir, float yDir) {
+        accV.x = xDir * velForce;
+
+        accV.y = yDir * velForce;
+
+        if (accV.x != 0 && accV.y != 0) {
+            if (velV.mag() >= 0 && velV.mag() <= velForce) {
+                velV.x = xDir * velForce;
+
+                velV.y = yDir * velForce;
+            }
+        }
+    }
+
+    @Override
+    public void draw(Canvas c, Paint p, float plX, float plY) {
+        Bitmap im = Bitmap.createScaledBitmap(imageManager.getCurrentStatusFrame(lastDir, accV.mag() != 0, itemHolder.getCur()),
+                (int)((l + shape.getR() * 2) * GameView.HEIGHT_MULTIP), (int)((l + shape.getR() * 2) * GameView.HEIGHT_MULTIP), false);
+
+        c.drawBitmap(im, (posV.x + plX - (shape.getR() + l / 2)) * GameView.HEIGHT_MULTIP, (posV.y + plY - shape.getR() - z - l) * GameView.HEIGHT_MULTIP, p);
     }
 }

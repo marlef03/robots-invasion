@@ -1,6 +1,7 @@
 package com.example.game.core;
 
 import android.graphics.Canvas;
+import android.util.Log;
 import android.view.SurfaceHolder;
 
 public class UpdateThread extends Thread {
@@ -17,13 +18,12 @@ public class UpdateThread extends Thread {
 
     @Override
     public void run() {
-        // super.run();
+        super.run();
 
         long lastTime = System.nanoTime();
-        double amountOfTicks = 200.0;
+        double amountOfTicks = 1000.0;
         double ns = 1000000000 / amountOfTicks;
         double delta = 0;
-        long timer = System.currentTimeMillis();
 
         while (tRun) {
             long now = System.nanoTime();
@@ -32,13 +32,9 @@ public class UpdateThread extends Thread {
 
             while (delta >= 1) {
                 surfV.update();
-
                 delta--;
             }
 
-            if (System.currentTimeMillis() - timer > 1000) {
-                timer += 1000;
-            }
         }
     }
 }

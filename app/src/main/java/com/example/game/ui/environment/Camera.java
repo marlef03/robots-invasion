@@ -1,22 +1,19 @@
 package com.example.game.ui.environment;
 
+import com.example.game.core.GameView;
+import com.example.game.species.Body;
+import com.example.game.util.Vec;
+
 public class Camera {
-    private float[] point;
-    private boolean freeCam;
+    private Body followObject;
 
-    public void setPoint(float pointX, float pointY) {
-        this.point = new float[]{pointX, pointY};
+    public void setFollowObject(Body object) {
+        followObject = object;
     }
 
-    public float[] getPoint() {
-        return point;
+    public Vec getScreenEdgePos() {
+        return new Vec(followObject.getPosV().x - (float)GameView.WIDTH / GameView.HEIGHT_MULTIP / 2,
+                followObject.getPosV().y - followObject.getZ() - (float)GameView.HEIGHT / GameView.HEIGHT_MULTIP / 2);
     }
 
-    public void setFreeCam(boolean a) {
-        freeCam = a;
-    }
-
-    public boolean getFreeCam() {
-        return freeCam;
-    }
 }
